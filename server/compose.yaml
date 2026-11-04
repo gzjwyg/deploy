@@ -1,0 +1,97 @@
+# /etc/lx-deploy/compose.yaml on the server (shared-account docs/DEPLOYMENT.md § 4).
+# Applied only by `sudo lx-deploy apply-config`. The images come from /etc/lx-deploy/.env, which
+# lx-deploy writes from release.json; nothing here is chosen by a release.
+#
+# Every service: host network, bound to 127.0.0.1 (the services call each other there and the
+# account service's internal endpoints accept only loopback); user 10001; no capabilities; a
+# read-only root; only its own data folder, at /data; secrets only from /etc/lx-deploy/env/.
+name: lx
+
+x-service: &service
+  network_mode: host
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  tmpfs: ["/tmp:rw,nosuid,nodev,size=64m"]
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 20s
+  logging:
+    driver: journald
+    options:
+      tag: "lx-{{.Name}}"
+
+x-account: &account-settings
+  ACCOUNT_ISSUER: https://account.lixingzhuyi.com
+  ACCOUNT_SERVICE_URL: http://127.0.0.1:8790
+
+services:
+  shared-account:
+    <<: *service
+    image: ${LX_IMAGE_SHARED_ACCOUNT:?run lx-deploy, which writes .env from release.json}
+    env_file: [/etc/lx-deploy/env/shared-account.env]
+    environment:
+      HOST: 127.0.0.1
+      PORT: "8790"
+      ACCOUNT_ISSUER: https://account.lixingzhuyi.com
+      ACCOUNT_SITE_ORIGINS: https://library.lixingzhuyi.com,https://forum.lixingzhuyi.com
+      ACCOUNT_DATA_DIR: /data
+      ACCOUNT_CLIENTS_FILE: /data/clients.json
+      ACCOUNT_RESERVED_NAMES_FILE: /data/reserved-names.txt
+    volumes: ["/srv/lx/shared-account:/data"]
+    # Sizes are a first guess for a 1.9 GB server; the dry run measures them (docker stats).
+    mem_limit: 256m
+
+  rat-webs:
+    <<: *service
+    image: ${LX_IMAGE_RAT_WEBS:?run lx-deploy, which writes .env from release.json}
+    env_file: [/etc/lx-deploy/env/rat-webs.env]
+    environment:
+      <<: *account-settings
+      HOST: 127.0.0.1
+      PORT: "8787"
+      RATWEBS_ORIGIN: https://library.lixingzhuyi.com
+      RATWEBS_DATA_DIR: /data
+      RATWEBS_MODERATION_FILE: /data/moderation.txt
+      NOBODY_DESK_ORIGIN: https://forum.lixingzhuyi.com
+      NOBODY_INTERNAL_URL: http://127.0.0.1:8000
+    volumes: ["/srv/lx/rat-webs:/data"]
+    mem_limit: 768m
+
+  nobody:
+    <<: *service
+    image: ${LX_IMAGE_NOBODY:?run lx-deploy, which writes .env from release.json}
+    env_file: [/etc/lx-deploy/env/nobody.env]
+    environment:
+      <<: *account-settings
+      HOST: 127.0.0.1
+      PORT: "8000"
+      NODE_ENV: production
+      NOBODY_DATABASE: /data/nobody.sqlite
+      NOBODY_ORIGIN: https://forum.lixingzhuyi.com
+      NOBODY_ORIGINS: https://forum.lixingzhuyi.com
+      NOBODY_PUBLIC_ORIGIN: https://forum.lixingzhuyi.com
+      NOBODY_LIBRARY_ORIGIN: https://library.lixingzhuyi.com
+      NOBODY_PATHS_PEER_URL: https://library.lixingzhuyi.com/exports/items.json
+      NOBODY_TRUST_PROXY: 127.0.0.1
+      NOBODY_TIMEZONE: Asia/Shanghai
+      # Off until the owner decides (replies send reader comments to a model provider;
+      # the public exports wait for the content licence).
+      NOBODY_REPLIES: "off"
+      COMMONS_EXPORTS: "off"
+    volumes: ["/srv/lx/nobody:/data"]
+    mem_limit: 512m
+
+  # The article library: a one-off job, never started by `up` (Article-database deploy/README.md).
+  # No network: its mirror commands talk through the SSH connection's standard input and output.
+  articledb:
+    <<: *service
+    image: ${LX_IMAGE_ARTICLEDB:-ghcr.io/gzjwyg/articledb-not-released}
+    profiles: [jobs]
+    network_mode: none
+    restart: "no"
+    environment:
+      ARTICLEDB_HOME: /data
+    volumes: ["/srv/lx/articledb:/data"]
+    mem_limit: 768m

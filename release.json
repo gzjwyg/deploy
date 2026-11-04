@@ -1,0 +1,10 @@
+{
+  "images": {
+    "shared-account": "ghcr.io/gzjwyg/shared-account@sha256:bfc361756ccdb293f295ce07a55c95a1474f4dbff65102c22a4999a464b0393c",
+    "rat-webs": "ghcr.io/gzjwyg/rat-webs@sha256:437738a600922033c1f89c1ca19ee734a69e0afac9087b68dce7694f88633ec5",
+    "nobody": "ghcr.io/gzjwyg/nobody@sha256:35a5f164cedbfc9677e0614b821e1df2bd6aee85a0d94548ede23dff69f114ee",
+    "articledb": "ghcr.io/gzjwyg/articledb@sha256:3ccda8cab460610ba300729f300f8543548eb0d2b5f54033f739d4026f7c75c2"
+  },
+  "checks": "basic",
+  "run": "not for the first deployment: the Library and Nobody images still carry the old addresses"
+}

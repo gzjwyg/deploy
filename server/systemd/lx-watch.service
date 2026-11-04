@@ -1,0 +1,9 @@
+[Unit]
+Description=Community disk, error, backup and credit alerts (host)
+After=docker.service
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/lx-deploy/env/shared-account.env
+EnvironmentFile=/etc/lx-deploy/watch.env
+ExecStart=/usr/bin/python3 /opt/lx-monitor/watch.py watch
+UMask=0077

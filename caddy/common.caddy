@@ -1,12 +1,14 @@
-# Shared protections for every public host. Import at the top of each site block:
-#   import /etc/lx-deploy/caddy/common.caddy
+# Shared protections for every public host, imported by sites.caddy:
 #   example.com { import lx_common ... }
 #
 # 1. Bots probing for WordPress, PHP, admin panels and dotfiles are turned away here, so the
 #    requests never reach an application, its logs or the alerts (none of our sites runs PHP).
 #    The Library serves /vendor/katex/, so only PHP's /vendor/phpunit/ is blocked.
 # 2. /internal/* never leaves the server (AGENTS.md § 4); applications call it on loopback.
-# 3. HSTS on every host (docs/IDENTITY-V2.md § 2).
+# 3. HSTS and the headers the old nginx guides set, on every host (docs/IDENTITY-V2.md § 2).
+# 4. One access log line per request, as JSON to the journal (unit caddy.service), for the
+#    error alerts of package H (shared-account deploy/watch.py). It keeps only the time, host,
+#    method, path, status, size and duration: no addresses, no headers, no query strings.
 (lx_common) {
 	@lx_probes {
 		path /wp-admin* /wp-login.php /wp-content/* /wp-includes/* /wp-json/* /xmlrpc.php
@@ -26,5 +28,27 @@
 	handle /__lx_refused {
 		respond 404
 	}
-	header Strict-Transport-Security "max-age=31536000"
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Content-Security-Policy "frame-ancestors 'none'"
+		-Server
+	}
+	log {
+		output stderr
+		format filter {
+			wrap json
+			fields {
+				request>remote_ip delete
+				request>remote_port delete
+				request>client_ip delete
+				request>headers delete
+				request>tls delete
+				request>uri regexp \?.*$ ""
+				resp_headers delete
+				user_id delete
+			}
+		}
+	}
 }

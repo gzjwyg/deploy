@@ -1,11 +1,28 @@
 # The sign-in host (docs/IDENTITY-V2.md § 2): only the public provider paths reach the account
 # service. /token, /userinfo, /internal/* and everything else answer 404 here; the applications
-# call those on the server itself. Use as:
+# call those on the server itself. Used by sites.caddy as:
 #   account.lixingzhuyi.com { import lx_common; import lx_account }
+#
+# Every request reaches the account service from 127.0.0.1, so it takes the visitor's address
+# from X-Real-IP (service/app.py, network()) for its sign-in limits. Caddy passes a visitor's own
+# headers through unless told otherwise, so X-Real-IP is always overwritten here, and the
+# service's internal headers are removed.
 (lx_account) {
-	@lx_account_public path /.well-known/openid-configuration /authorize /logout /robots.txt /account/login /account/auth/email /account/auth/login /account/auth/logout /account/me
+	@lx_account_public path /.well-known/openid-configuration /authorize /logout /robots.txt /healthz /account/login /account/auth/email /account/auth/login /account/auth/logout /account/me
 	handle @lx_account_public {
-		reverse_proxy 127.0.0.1:8790
+		request_body {
+			max_size 32KB
+		}
+		reverse_proxy {$LX_ACCOUNT_UPSTREAM:127.0.0.1:8790} {
+			header_up X-Real-IP {remote_host}
+			header_up -X-Internal-Secret
+			header_up -X-Session-Token
+			header_up -Authorization
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 25s
+			}
+		}
 	}
 	handle {
 		respond 404

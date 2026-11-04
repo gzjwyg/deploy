@@ -1,0 +1,10 @@
+[Unit]
+Description=Community monthly isolated backup restore tests (host)
+After=docker.service
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/lx-deploy/env/shared-account.env
+EnvironmentFile=/etc/lx-deploy/watch.env
+ExecStart=/usr/bin/python3 /opt/lx-monitor/watch.py restore
+TimeoutStartSec=3h
+UMask=0077

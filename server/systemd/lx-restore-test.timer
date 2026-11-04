@@ -1,0 +1,8 @@
+[Unit]
+Description=Test community database restores monthly
+[Timer]
+OnCalendar=*-*-01 04:15:00 UTC
+Persistent=true
+RandomizedDelaySec=5m
+[Install]
+WantedBy=timers.target

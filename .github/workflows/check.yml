@@ -1,0 +1,25 @@
+name: check
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: lx-deploy with a fake server
+        run: python3 -m unittest discover -s server/tests -v
+      - name: Install Caddy and ShellCheck from Ubuntu
+        run: sudo apt-get update -q && sudo apt-get install -y -q caddy shellcheck
+      - name: The real Caddy files
+        run: bash caddy/check.sh
+      - name: The compose file
+        run: bash server/tests/compose-check.sh
+      - name: Shell scripts
+        run: shellcheck server/install.sh server/inspect.sh server/tests/compose-check.sh caddy/check.sh

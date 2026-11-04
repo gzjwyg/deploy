@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up every service with its own backup command (lx-deploy backup all)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/lx-deploy backup all
+TimeoutStartSec=2h
+UMask=0077

@@ -1,0 +1,13 @@
+[Unit]
+Description=Deploy the versions named in gzjwyg/deploy, check them, roll back on failure
+Documentation=https://github.com/gzjwyg/deploy/blob/main/GUIDE.md
+After=network-online.target docker.service caddy.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/lx-deploy run
+# Downloads, backups and the full checks can take a while on a small server.
+TimeoutStartSec=45min
+UMask=0022

@@ -1,0 +1,96 @@
+# One block per public name (docs/IDENTITY-V2.md § 1 and § 2 in shared-account).
+# The {$LX_...:default} values are for caddy/check.sh only; on the server the defaults apply.
+import {$LX_CADDY:/etc/lx-deploy/caddy}/common.caddy
+import {$LX_CADDY:/etc/lx-deploy/caddy}/account.caddy
+
+# The homepage: static files from this repository's home/ (copied by lx-deploy).
+lixingzhuyi.com {
+	import lx_common
+	root * {$LX_WWW:/srv/lx/www}/home
+	file_server
+	handle_errors {
+		@lx_404 expression {err.status_code} == 404
+		handle @lx_404 {
+			rewrite * /404.html
+			file_server
+		}
+	}
+}
+
+# Permanent: these names will always lead to the homepage.
+www.lixingzhuyi.com, xn--tiq2a255imxs.com, www.xn--tiq2a255imxs.com {
+	import lx_common
+	redir https://lixingzhuyi.com{uri} permanent
+}
+
+# Temporary: the Arena lives inside Nobody until it gets a host of its own.
+arena.lixingzhuyi.com {
+	import lx_common
+	redir https://forum.lixingzhuyi.com/arena{uri} temporary
+}
+
+# The Library (Rat-webs). Its built site, exports included, comes out of its image.
+library.lixingzhuyi.com {
+	import lx_common
+	request_body {
+		max_size 256KB
+	}
+	encode zstd gzip
+	@lx_library_app path /api/* /staff/* /admin* /healthz
+	handle @lx_library_app {
+		# Ask streams its answer; send each part as soon as it comes.
+		reverse_proxy {$LX_LIBRARY_UPSTREAM:127.0.0.1:8787} {
+			flush_interval -1
+		}
+	}
+	handle /_astro/* {
+		root * {$LX_WWW:/srv/lx/www}/rat-webs
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+	handle {
+		root * {$LX_WWW:/srv/lx/www}/rat-webs
+		file_server
+	}
+	handle_errors {
+		@lx_404 expression {err.status_code} == 404
+		handle @lx_404 {
+			root * {$LX_WWW:/srv/lx/www}/rat-webs
+			rewrite * /404.html
+			file_server
+		}
+	}
+}
+
+# Nobody (forum): its web app with the single-page fallback; the API, its two public indexes
+# (package G) and health go to the application.
+forum.lixingzhuyi.com {
+	import lx_common
+	request_body {
+		max_size 256KB
+	}
+	encode zstd gzip
+	@lx_forum_app path /api/* /exports/* /llms.txt /healthz
+	handle @lx_forum_app {
+		reverse_proxy {$LX_FORUM_UPSTREAM:127.0.0.1:8000} {
+			flush_interval -1
+		}
+	}
+	handle /assets/* {
+		root * {$LX_WWW:/srv/lx/www}/nobody
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+	handle {
+		root * {$LX_WWW:/srv/lx/www}/nobody
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# Sign-in (account.caddy).
+account.lixingzhuyi.com {
+	import lx_common
+	import lx_account
+}

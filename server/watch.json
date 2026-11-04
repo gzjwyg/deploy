@@ -1,0 +1,84 @@
+{
+  "disks": [
+    {
+      "name": "server disk",
+      "path": "/srv/lx"
+    }
+  ],
+  "services": [
+    {
+      "name": "shared-account",
+      "host": "account.lixingzhuyi.com",
+      "prefix": "/",
+      "backup_glob": "/srv/lx/backups/shared-account/daily-*.sqlite3"
+    },
+    {
+      "name": "rat-webs",
+      "host": "library.lixingzhuyi.com",
+      "prefix": "/",
+      "backup_glob": "/srv/lx/backups/rat-webs/*.sqlite3",
+      "database": "/srv/lx/rat-webs/rat-webs.sqlite3"
+    },
+    {
+      "name": "nobody",
+      "host": "forum.lixingzhuyi.com",
+      "prefix": "/",
+      "backup_glob": "/srv/lx/backups/nobody/daily-*.sqlite"
+    },
+    {
+      "name": "articledb",
+      "backup_glob": "/srv/lx/backups/articledb/backup-*.json"
+    }
+  ],
+  "restore_jobs": [
+    {
+      "name": "shared-account",
+      "kind": "sqlite",
+      "backup_glob": "/srv/lx/backups/shared-account/daily-*.sqlite3",
+      "tables": [
+        "accounts",
+        "sessions"
+      ]
+    },
+    {
+      "name": "rat-webs",
+      "kind": "sqlite",
+      "backup_glob": "/srv/lx/backups/rat-webs/*.sqlite3",
+      "tables": [
+        "users",
+        "passages",
+        "community_credits"
+      ]
+    },
+    {
+      "name": "nobody",
+      "kind": "sqlite",
+      "backup_glob": "/srv/lx/backups/nobody/daily-*.sqlite",
+      "tables": [
+        "metadata",
+        "readers",
+        "issues"
+      ]
+    },
+    {
+      "name": "articledb",
+      "kind": "command",
+      "command": [
+        "docker",
+        "compose",
+        "--project-directory",
+        "/etc/lx-deploy",
+        "run",
+        "--rm",
+        "-T",
+        "--volume",
+        "/srv/lx/backups/articledb:/data/backups",
+        "articledb",
+        "restore-test",
+        "--from",
+        "/data/backups"
+      ]
+    }
+  ],
+  "caddy_unit": "caddy.service"
+}

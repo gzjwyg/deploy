@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily backups at 03:30 Hong Kong time
+
+[Timer]
+OnCalendar=*-*-* 19:30:00 UTC
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

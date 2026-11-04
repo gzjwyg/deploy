@@ -1,0 +1,9 @@
+# /etc/lx-deploy/caddy/Caddyfile on the server; /etc/caddy/Caddyfile only imports it.
+# Applied by `sudo lx-deploy apply-config`, which validates it before Caddy reloads.
+{
+	servers {
+		# HTTP/3 needs UDP 443, which the Lighthouse firewall does not open.
+		protocols h1 h2
+	}
+}
+import /etc/lx-deploy/caddy/sites.caddy
