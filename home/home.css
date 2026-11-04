@@ -1,5 +1,6 @@
 /* lixingzhuyi.com: the ecosystem's front door. Static; no scripts, no outside fonts or files.
-   Rules: home/DESIGN.md (four type sizes, one accent, hairlines, 4px grid, Western fonts first). */
+   Rules: shared-account docs/LEARNING-FROM-DESIGNERS.md § 3 (four type sizes, hairlines, 4px grid,
+   Western fonts first). Each door keeps its own colour, by the owner's choice (4 Nov 2026). */
 :root {
   --bg: #f6f2ea;
   --card: #fffdf8;
@@ -7,6 +8,9 @@
   --soft: #5b554b;
   --line: rgba(31, 28, 23, 0.16);
   --accent: #9a3b1f;
+  --library: #8a5a14;
+  --forum: #2f6b5f;
+  --arena: #8c2f3c;
   --focus: #1b5fd6;
   --hairline: 0.5px;
   --text-sm: 14px;
@@ -27,6 +31,9 @@
     --soft: #b0a796;
     --line: rgba(236, 230, 218, 0.18);
     --accent: #e08a62;
+    --library: #d9a756;
+    --forum: #73b8a8;
+    --arena: #e0828f;
     --focus: #8ab4ff;
     color-scheme: dark;
   }
@@ -64,15 +71,18 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 .doors { display: grid; gap: 16px; grid-template-columns: 1fr; padding: 8px 0 40px; list-style: none; margin: 0; }
 @media (min-width: 820px) { .doors { grid-template-columns: repeat(3, 1fr); gap: 20px; } }
 .door { background: var(--card); border: var(--hairline) solid var(--line); border-radius: var(--radius); padding: 24px; display: flex; flex-direction: column; position: relative; }
-.door svg { width: 40px; height: 40px; margin-bottom: 16px; color: var(--ink); }
+.door svg { width: 40px; height: 40px; margin-bottom: 16px; color: var(--c); }
 .door h2 { font-size: var(--text-lg); margin: 0 0 8px; line-height: 1.3; }
 .door h2 small { font-size: var(--text-sm); font-weight: 400; color: var(--soft); margin-left: 8px; }
 .door p { margin: 0 0 20px; color: var(--soft); flex: 1; }
-.door a { font-weight: 600; color: var(--accent); text-decoration: none; }
+.door a { font-weight: 600; color: var(--c); text-decoration: none; }
 .door a::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius); }
 .door a:focus-visible { outline: none; }
 .door:has(a:focus-visible) { outline: 2px solid var(--focus); outline-offset: 4px; }
 .door:hover { background: color-mix(in srgb, var(--card) 94%, var(--ink)); }
+.library { --c: var(--library); }
+.forum { --c: var(--forum); }
+.arena { --c: var(--arena); }
 .door .host { display: block; font-weight: 400; font-size: var(--text-sm); color: var(--soft); margin-top: 4px; }
 
 .notes { display: grid; gap: 16px; grid-template-columns: 1fr; border-top: var(--hairline) solid var(--line); padding: 32px 0; }
