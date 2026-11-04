@@ -7,9 +7,9 @@ the shared account service, and the Concept Map's and Article-database's jobs. M
 |---|---|---|
 | [`GUIDE.md`](GUIDE.md) | **The owner's guide**: the read-only check, the one-time setup, everyday commands | Ready |
 | `release.json` | Which image runs, per service: the only file agents change to deploy | Waits for the images with the new addresses |
-| `server/lx-deploy` | The updater (Python, standard library): `run` every two minutes, `apply-config`, `init-secrets`, `check`, `backup`, `rollback`, `status` | Ready; tested with a fake server |
+| `server/lx-deploy` | The updater (Python, standard library): `run` twice a day (04:00 and 16:00 Hong Kong time), `apply-config`, `init-secrets`, `check`, `backup`, `rollback`, `status` | Ready; tested with a fake server |
 | `server/compose.yaml` | How the three services and the article-library job run: host network on 127.0.0.1, user 10001, read-only root, no capabilities, their own data folder | Ready |
-| `server/systemd/` | Timers: deployments (2 min), backups (daily), alerts (15 min) and the monthly restore test | Ready |
+| `server/systemd/` | Timers: deployments (twice a day), backups (daily), alerts (15 min) and the monthly restore test | Ready |
 | `server/watch.json`, `server/monitor/watch.py` | Package H's alerts with this deployment's names; `watch.py` is a copy of shared-account `deploy/watch.py` (67f3c60): change it there first | Ready |
 | `server/inspect.sh`, `server/install.sh` | The read-only server check, and the installer | Ready |
 | `caddy/` | The web server: `Caddyfile` → `sites.caddy` (one block per name), `common.caddy` (probes, `/internal/`, headers, a log without addresses), `account.caddy` (only the public sign-in paths) | Ready |
@@ -41,7 +41,7 @@ bash server/tests/compose-check.sh                # the compose file, with synth
 
 1. An agent changes `release.json` (`ghcr.io/gzjwyg/<service>@sha256:…` per service, `checks`
    `basic` or `full`, and a free `run` label; changing the label alone re-runs the checks).
-2. Within two minutes the server fetches it with its read-only key. Anything else in the file,
+2. At the next of 04:00 or 16:00 (Hong Kong), or at once with `sudo lx-deploy run`, the server fetches it with its read-only key. Anything else in the file,
    or any other image, is refused and reported, and nothing changes.
 3. It downloads the images, backs up each service it is about to change, copies the two sites'
    static files out of their images (refusing links), starts the new versions and runs the

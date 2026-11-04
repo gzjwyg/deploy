@@ -3,7 +3,7 @@
 
 The design is shared-account docs/DEPLOYMENT.md. In short:
 
-- `run` (every two minutes, from lx-deploy.timer) fetches gzjwyg/deploy with a read-only key,
+- `run` (twice a day, from lx-deploy.timer; or by hand) fetches gzjwyg/deploy with a read-only key,
   accepts release.json only if it names nothing but our own image digests, downloads them,
   backs up the services it is about to change, starts the new versions, checks them, and puts
   the previous versions back by itself if a check fails. It reports pass/fail lines and versions
@@ -1221,7 +1221,7 @@ def main(argv=None, server=None):
                 return cmd_rollback(server)
             return cmd_status(server)
     except Busy:
-        return 0  # another run holds the lock; the timer comes back in two minutes
+        return 0  # another run holds the lock; the timer comes back at its next time
 
 
 if __name__ == "__main__":

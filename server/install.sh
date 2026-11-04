@@ -93,5 +93,5 @@ echo
 echo "== The first deployment"
 /usr/local/sbin/lx-deploy run --force || true
 echo
-echo "Installed. From now on the server looks for a new release every two minutes and reports"
+echo "Installed. From now on the server looks for a new release at 04:00 and 16:00 (Hong Kong) and reports"
 echo "each result on gzjwyg/deploy. Status: sudo lx-deploy status"

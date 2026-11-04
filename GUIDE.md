@@ -4,9 +4,9 @@ How the Hong Kong server runs the Library, Nobody and the sign-in service, and t
 only you can do. The design behind it is shared-account
 [`docs/DEPLOYMENT.md`](https://github.com/gzjwyg/shared-account/blob/main/docs/DEPLOYMENT.md).
 
-**In one paragraph.** A small program on the server, `lx-deploy`, looks at this repository every
-two minutes. When an agent changes `release.json` (the list of versions to run), the server
-downloads those versions, backs up what it is about to change, starts them, tests them, and puts
+**In one paragraph.** A small program on the server, `lx-deploy`, looks at this repository twice a
+day, at 04:00 and 16:00 Hong Kong time. When an agent has changed `release.json` (the list of
+versions to run), the server downloads those versions, backs up what it is about to change, starts them, tests them, and puts
 the previous versions back by itself if a test fails. It writes each result as a comment on this
 repository's report issue. Agents can only choose versions; how the programs run (permissions,
 folders, the web server, secrets) changes only when you run one command and type `yes`.
