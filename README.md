@@ -6,6 +6,7 @@ the shared account service, and the Concept Map's and Article-database's jobs. M
 | Path | What | State |
 |---|---|---|
 | `home/` | The homepage at `lixingzhuyi.com`: what the three parts are and the way into each (`docs/IDENTITY-V2.md` § 1 in shared-account) | Ready |
+| `caddy/common.caddy`, `caddy/account.caddy` | Pieces of the future `Caddyfile`: bot probes, `/internal/*` and dotfiles refused on every host; on `account.`, only the public sign-in paths reach the account service. `caddy/check.sh` tests both with a local Caddy | Ready |
 | `lx-deploy`, compose, `Caddyfile`, `watch.json`, timers, the owner's guide | Deployment | Waits on the owner's read-only server check |
 
 Nothing here changes the server by itself. The owner decides when anything is installed.

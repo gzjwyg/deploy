@@ -1,0 +1,30 @@
+# Shared protections for every public host. Import at the top of each site block:
+#   import /etc/lx-deploy/caddy/common.caddy
+#   example.com { import lx_common ... }
+#
+# 1. Bots probing for WordPress, PHP, admin panels and dotfiles are turned away here, so the
+#    requests never reach an application, its logs or the alerts (none of our sites runs PHP).
+#    The Library serves /vendor/katex/, so only PHP's /vendor/phpunit/ is blocked.
+# 2. /internal/* never leaves the server (AGENTS.md § 4); applications call it on loopback.
+# 3. HSTS on every host (docs/IDENTITY-V2.md § 2).
+(lx_common) {
+	@lx_probes {
+		path /wp-admin* /wp-login.php /wp-content/* /wp-includes/* /wp-json/* /xmlrpc.php
+		path *.php /phpmyadmin* /pma/* /cgi-bin/* /vendor/phpunit/* /boaform/* /actuator/* /HNAP1*
+	}
+	# A path segment starting with a dot (/.env, /api/.git/config), except /.well-known/.
+	@lx_dotfiles {
+		path_regexp lx_dot /\.
+		not path /.well-known/*
+	}
+	@lx_internal path /internal/*
+	# Rewrites run before every handle block, so these are refused even under a path an
+	# application owns (/api/upload.php would otherwise reach the application).
+	rewrite @lx_probes /__lx_refused
+	rewrite @lx_dotfiles /__lx_refused
+	rewrite @lx_internal /__lx_refused
+	handle /__lx_refused {
+		respond 404
+	}
+	header Strict-Transport-Security "max-age=31536000"
+}

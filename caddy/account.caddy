@@ -1,0 +1,14 @@
+# The sign-in host (docs/IDENTITY-V2.md § 2): only the public provider paths reach the account
+# service. /token, /userinfo, /internal/* and everything else answer 404 here; the applications
+# call those on the server itself. Use as:
+#   account.lixingzhuyi.com { import lx_common; import lx_account }
+(lx_account) {
+	@lx_account_public path /.well-known/openid-configuration /authorize /logout /robots.txt /account/login /account/auth/email /account/auth/login /account/auth/logout /account/me
+	handle @lx_account_public {
+		reverse_proxy 127.0.0.1:8790
+	}
+	handle {
+		respond 404
+	}
+	header X-Robots-Tag "noindex"
+}
