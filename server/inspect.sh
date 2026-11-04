@@ -8,6 +8,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 section "When and where"
 date -u '+%Y-%m-%d %H:%M UTC'
+# shellcheck source=/dev/null
 . /etc/os-release 2>/dev/null && echo "$PRETTY_NAME"
 uname -r
 echo "CPUs: $(nproc)"

@@ -82,7 +82,9 @@ request() {
 while read -r host method path want_code want_reach want_body; do
   [ -z "$host" ] || [ "${host:0:1}" = "#" ] && continue
   request "$host" "$method" "$path"
-  [ "$code" = "$want_code" ] && [ "$reached" = "$want_reach" ] || fail "$method $host$path: got $code reaching $reached (want $want_code reaching $want_reach)"
+  if [ "$code" != "$want_code" ] || [ "$reached" != "$want_reach" ]; then
+    fail "$method $host$path: got $code reaching $reached (want $want_code reaching $want_reach)"
+  fi
   if [ "$want_body" != "-" ] && [ "$body" != "$want_body" ]; then fail "$method $host$path: body '$body' (want '$want_body')"; fi
 done <<'CASES'
 # host                         method path                              code reach body

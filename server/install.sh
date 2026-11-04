@@ -19,6 +19,7 @@ if grep -q '"run": *"not for the first deployment' "$repo/release.json"; then
 fi
 
 echo "== Checking the server (nothing is changed yet)"
+# shellcheck source=/dev/null
 . /etc/os-release
 [ "${VERSION_ID:-}" = 24.04 ] || echo "Note: this server runs $PRETTY_NAME; lx-deploy was written for Ubuntu 24.04."
 for tool in docker git python3 caddy ss; do

@@ -19,6 +19,7 @@ config=$(docker compose --project-directory "$work" config)
 for want in 'network_mode: host' 'read_only: true' 'user: 10001:10001' 'no-new-privileges:true'; do
   [ "$(grep -c -- "$want" <<<"$config")" -ge 3 ] || { echo "compose check: '$want' missing on a service"; exit 1; }
 done
+# shellcheck disable=SC2016 # the dollar signs are literal: Compose escapes each as $$
 grep -q 'RATWEBS_ADMIN_PASSWORD_HASH: \$\$2b\$\$12\$\$synthetic' <<<"$config" || { echo "compose check: a bcrypt hash would be mangled"; exit 1; }
 if grep -qE '^\s+ports:' <<<"$config"; then echo "compose check: a service publishes a port"; exit 1; fi
 echo "compose check: passes"
