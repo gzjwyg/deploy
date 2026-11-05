@@ -1,10 +1,10 @@
 {
   "images": {
-    "shared-account": "ghcr.io/gzjwyg/shared-account@sha256:bfc361756ccdb293f295ce07a55c95a1474f4dbff65102c22a4999a464b0393c",
-    "rat-webs": "ghcr.io/gzjwyg/rat-webs@sha256:437738a600922033c1f89c1ca19ee734a69e0afac9087b68dce7694f88633ec5",
-    "nobody": "ghcr.io/gzjwyg/nobody@sha256:35a5f164cedbfc9677e0614b821e1df2bd6aee85a0d94548ede23dff69f114ee",
-    "articledb": "ghcr.io/gzjwyg/articledb@sha256:3ccda8cab460610ba300729f300f8543548eb0d2b5f54033f739d4026f7c75c2"
+    "shared-account": "ghcr.io/gzjwyg/shared-account@sha256:4fa2d3b963f0245c3f2ed42c360a03912098a66112c9d6d53c4877d6f31c56f1",
+    "rat-webs": "ghcr.io/gzjwyg/rat-webs@sha256:fdac4b8e4cdbe6dc8cc27cb9ef09337f12680b577239d2a28275ea385c44cc98",
+    "nobody": "ghcr.io/gzjwyg/nobody@sha256:faf98c676be2ebbe263ab6ff612ddfb6dcc84ac81512d08ba3a4f6a9de7f3e7d",
+    "articledb": "ghcr.io/gzjwyg/articledb@sha256:f019ea28629b22bed4a7e6f131fccf7f7829f954ffef8c2cb3aac4de31d0203e"
   },
   "checks": "basic",
-  "run": "not for the first deployment: the Library and Nobody images still carry the old addresses"
+  "run": "first deployment: sign-in version 2 renewed, library. and forum. built in (5 Nov)"
 }

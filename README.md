@@ -6,7 +6,7 @@ the shared account service, and the Concept Map's and Article-database's jobs. M
 | Path | What | State |
 |---|---|---|
 | [`GUIDE.md`](GUIDE.md) | **The owner's guide**: the read-only check, the one-time setup, everyday commands | Ready |
-| `release.json` | Which image runs, per service: the only file agents change to deploy | Waits for the images with the new addresses |
+| `release.json` | Which image runs, per service: the only file agents change to deploy | Ready for the first deployment (5 Nov): images with sign-in version 2 and the new addresses |
 | `server/lx-deploy` | The updater (Python, standard library): `run` twice a day (04:00 and 16:00 Hong Kong time), `apply-config`, `init-secrets`, `check`, `backup`, `rollback`, `status` | Ready; tested with a fake server |
 | `server/compose.yaml` | How the three services and the article-library job run: host network on 127.0.0.1, user 10001, read-only root, no capabilities, their own data folder | Ready |
 | `server/systemd/` | Timers: deployments (twice a day), backups (daily), alerts (15 min) and the monthly restore test | Ready |
