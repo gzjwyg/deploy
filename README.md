@@ -37,6 +37,13 @@ bash caddy/check.sh                               # the real Caddy files, with s
 bash server/tests/compose-check.sh                # the compose file, with synthetic settings
 ```
 
+## Modularization (owner, 10 Nov 2026)
+
+Package M3c of gzjwyg/shared-account `docs/MODULAR.md`: GPT splits `server/lx-deploy` into a
+`server/lxdeploy/` package (layout, release, state, git, config, checks, deploy, backup, secrets,
+commands) with `server/lx-deploy` as a thin launcher; behaviour and every check unchanged;
+Claude reviews. Merges do not deploy: the server runs only what `release.json` pins.
+
 ## How a deployment works
 
 1. An agent changes `release.json` (`ghcr.io/gzjwyg/<service>@sha256:…` per service, `checks`
