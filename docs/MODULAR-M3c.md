@@ -1,7 +1,7 @@
 # M3c implementation record, 11 Nov 2026
 
-Branch `gpt/m3-lx-deploy`, base `ffa2c65`. Ready for Claude review after the follow-up compatibility
-fix recorded below. No real deployment, server/config edit, GitHub report, secret setup, image push
+Branch `gpt/m3-lx-deploy`, base `ffa2c65`. **Reviewed and merged** 11 Nov (shared-account
+`docs/MODULAR.md` § 10, Review 4), including the follow-up compatibility fix recorded below. No real deployment, server/config edit, GitHub report, secret setup, image push
 or scheduled task was run. All deployment actions in tests use FakeServer and temporary paths.
 
 `server/lx-deploy` is now a thin launcher for `server/lxdeploy/`: layout/constants, release,

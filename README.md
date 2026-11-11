@@ -39,10 +39,11 @@ bash server/tests/compose-check.sh                # the compose file, with synth
 
 ## Modularization (owner, 10 Nov 2026)
 
-Package M3c of gzjwyg/shared-account `docs/MODULAR.md`: GPT splits `server/lx-deploy` into a
-`server/lxdeploy/` package (layout, release, state, git, config, checks, deploy, backup, secrets,
-commands) with `server/lx-deploy` as a thin launcher; behaviour and every check unchanged;
-Claude reviews. Merges do not deploy: the server runs only what `release.json` pins.
+Package M3c of gzjwyg/shared-account `docs/MODULAR.md` (done, reviewed 11 Nov): `server/lx-deploy`
+is a thin launcher for the `server/lxdeploy/` package (layout, release, state, git, config, checks,
+deploy, backup, secrets, commands); behaviour, command help and every check unchanged. The server
+picks the package up only through the owner's `apply-config`. Merges do not deploy: the server runs
+only what `release.json` pins.
 
 ## How a deployment works
 
