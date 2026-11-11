@@ -58,3 +58,8 @@ Claude reviews. Merges do not deploy: the server runs only what `release.json` p
 4. If a check fails, it starts the previous versions again and checks those.
 5. The result goes to the commit's status and the report issue: pass/fail lines and short
    digests, never logs or settings.
+
+The deployment CLI is implemented in `server/lxdeploy/`; `server/lx-deploy` only launches it.
+The owner's existing `apply-config` transaction installs the package beside the executable,
+including its diff, confirmation, backup and rollback. M3c's local-only verification is in
+`docs/MODULAR-M3c.md`; nothing here updates a running server automatically.
