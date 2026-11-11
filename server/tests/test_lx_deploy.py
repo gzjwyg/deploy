@@ -562,6 +562,17 @@ class Secrets(Base):
         self.assertEqual((layout.L.env / "shared-account.env").read_text(), first)
 
 
+    def test_resident_names_uses_the_core_pack_in_the_current_forum_image(self):
+        self.publish(release())
+        names = provisioning.resident_names(self.server)
+        self.assertIn("小红", names)
+        calls = self.server.ran("docker", "run")
+        self.assertEqual(len(calls), 1)
+        program = calls[0][-1]
+        self.assertIn("/app/core/src/content/pack/pack.json", program)
+        self.assertNotIn("/app/web/", program)
+
+
 class TheFilesAgree(unittest.TestCase):
     """The compose file, Caddy's sites, the monitoring config and lx-deploy name the same things."""
 

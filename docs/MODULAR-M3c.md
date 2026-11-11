@@ -38,5 +38,6 @@ checkout in normal deployment; only the owner's explicit apply-config installs c
 `resident_names()` still reads `/app/web/src/content/pack/pack.json` from Nobody's image, but
 M1 moved the real pack to `/app/core/src/content/pack/pack.json` and removed web from that image.
 As required by MODULAR R6, the refactor commit preserves the old path, then a separately named
-fix changes only that path and adds a regression. The final result and commit are recorded below
-when that follow-up is complete. This does not run secret initialization on the server.
+fix changes only that path and adds a regression. The separate follow-up corrects that one image path and adds a regression asserting that the
+current core pack is read and no `/app/web/` path is used. Final suite: **34 pass**, no skips;
+CLI help remains identical. This does not run secret initialization on the server.

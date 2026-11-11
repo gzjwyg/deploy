@@ -179,7 +179,7 @@ def resident_names(server):
     if not image:
         return []
     program = (
-        "const p=JSON.parse(require('fs').readFileSync('/app/web/src/content/pack/pack.json','utf8'));"
+        "const p=JSON.parse(require('fs').readFileSync('/app/core/src/content/pack/pack.json','utf8'));"
         "for(const r of p.personas){console.log(r.name.zh);console.log(r.name.en);console.log(r.handle)}"
     )
     try:
