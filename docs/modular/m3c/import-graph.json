@@ -1,0 +1,73 @@
+{
+  "secrets": [
+    "layout",
+    "release",
+    "state",
+    "system"
+  ],
+  "__init__": [],
+  "reporting": [
+    "layout",
+    "release",
+    "system"
+  ],
+  "deploy": [
+    "backup",
+    "checks",
+    "config",
+    "git",
+    "layout",
+    "release",
+    "reporting",
+    "state",
+    "system",
+    "www"
+  ],
+  "system": [
+    "layout"
+  ],
+  "backup": [
+    "layout",
+    "state",
+    "system"
+  ],
+  "layout": [],
+  "checks": [
+    "backup",
+    "layout",
+    "reporting",
+    "system"
+  ],
+  "release": [
+    "layout"
+  ],
+  "git": [
+    "layout"
+  ],
+  "commands": [
+    "backup",
+    "checks",
+    "config",
+    "deploy",
+    "layout",
+    "reporting",
+    "secrets",
+    "state",
+    "system"
+  ],
+  "config": [
+    "checks",
+    "git",
+    "layout",
+    "state",
+    "system"
+  ],
+  "state": [
+    "layout",
+    "system"
+  ],
+  "www": [
+    "layout",
+    "release"
+  ]
+}

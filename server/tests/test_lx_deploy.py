@@ -2,8 +2,6 @@
 Run from the repository root: python3 -m unittest discover -s server/tests -v"""
 
 import contextlib
-import importlib.machinery
-import importlib.util
 import io
 import json
 import os
@@ -16,10 +14,16 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 os.environ["LX_TEST"] = "1"
-loader = importlib.machinery.SourceFileLoader("lx_deploy", str(ROOT / "server" / "lx-deploy"))
-spec = importlib.util.spec_from_loader("lx_deploy", loader)
-lx = importlib.util.module_from_spec(spec)
-loader.exec_module(lx)
+import sys
+
+sys.path.insert(0, str(ROOT / "server"))
+from lxdeploy import checks as health_checks
+from lxdeploy import config as configuration
+from lxdeploy import deploy as deployment
+from lxdeploy import layout, reporting, system
+from lxdeploy import release as release_rules
+from lxdeploy import secrets as provisioning
+from lxdeploy import state as state_store
 
 COMMIT = "a" * 40
 COMMIT2 = "b" * 40
@@ -77,11 +81,11 @@ class FakeServer:
             if command[: len(prefix)] == prefix:
                 code = 1
         if check and code:
-            raise lx.CommandFailed(command[:3], code)
+            raise system.CommandFailed(command[:3], code)
         return subprocess.CompletedProcess(command, code, out, b"")
 
     def compose(self, *args, check=True, timeout=900):
-        return self.sh(["docker", "compose", "--project-directory", str(lx.L.etc), *args], check=check)
+        return self.sh(["docker", "compose", "--project-directory", str(layout.L.etc), *args], check=check)
 
     def request(self, target, method, path, headers=None, body=None):
         self.calls.append(["request", str(target), method, path])
@@ -139,7 +143,7 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(self.tmp)]))
-        lx.L = lx.Layout(
+        layout.L = layout.Layout(
             etc=self.tmp / "etc",
             state=self.tmp / "state",
             srv=self.tmp / "srv",
@@ -148,17 +152,17 @@ class Base(unittest.TestCase):
             monitor=self.tmp / "monitor",
             caddyfile=self.tmp / "caddy" / "Caddyfile",
         )
-        lx.L.repo.mkdir(parents=True)
-        lx.L.etc.mkdir(parents=True)
-        (lx.L.repo / "home").mkdir()
-        (lx.L.repo / "home" / "index.html").write_text("<p>home</p>")
+        layout.L.repo.mkdir(parents=True)
+        layout.L.etc.mkdir(parents=True)
+        (layout.L.repo / "home").mkdir()
+        (layout.L.repo / "home" / "index.html").write_text("<p>home</p>")
         self.server = FakeServer()
         self.checks = []
-        patcher = mock.patch.object(lx, "run_checks", side_effect=self.fake_checks)
+        patcher = mock.patch.object(health_checks, "run_checks", side_effect=self.fake_checks)
         patcher.start()
         self.addCleanup(patcher.stop)
         self.reports = []
-        patcher = mock.patch.object(lx, "report", side_effect=lambda *a, **k: self.reports.append(a))
+        patcher = mock.patch.object(reporting, "report", side_effect=lambda *a, **k: self.reports.append(a))
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -167,20 +171,20 @@ class Base(unittest.TestCase):
         return Result(self.next_checks.pop(0) if getattr(self, "next_checks", None) else True)
 
     def publish(self, data, commit=COMMIT):
-        (lx.L.repo / "release.json").write_text(json.dumps(data) if not isinstance(data, str) else data)
+        (layout.L.repo / "release.json").write_text(json.dumps(data) if not isinstance(data, str) else data)
         self.server.commit = commit
 
     def run_quietly(self, **kwargs):
         with contextlib.redirect_stdout(io.StringIO()):
-            return lx.cmd_run(self.server, **kwargs)
+            return deployment.cmd_run(self.server, **kwargs)
 
     def dotenv(self):
-        return (lx.L.etc / ".env").read_text()
+        return (layout.L.etc / ".env").read_text()
 
 
 class ReleaseFile(unittest.TestCase):
     def check(self, data):
-        return lx.validate_release(json.dumps(data) if not isinstance(data, str) else data)
+        return release_rules.validate_release(json.dumps(data) if not isinstance(data, str) else data)
 
     def test_accepts_our_digests(self):
         result, errors = self.check(release(articledb=image("articledb", "4")))
@@ -208,21 +212,21 @@ class ReleaseFile(unittest.TestCase):
                 result, errors = self.check(data)
                 self.assertIsNone(result)
                 self.assertTrue(errors)
-        self.assertEqual(lx.validate_release(None)[1], ["release.json is missing"])
+        self.assertEqual(release_rules.validate_release(None)[1], ["release.json is missing"])
 
 
 class SettingsFiles(Base):
     def test_round_trip_keeps_dollar_signs_and_is_private(self):
-        path = lx.L.env / "rat-webs.env"
+        path = layout.L.env / "rat-webs.env"
         values = {"RATWEBS_ADMIN_PASSWORD_HASH": "$2b$12$" + "A" * 53, "EMPTY": ""}
-        lx.write_env(path, values, "test")
-        self.assertEqual(lx.read_env(path), values)
+        state_store.write_env(path, values, "test")
+        self.assertEqual(state_store.read_env(path), values)
         self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
     def test_refuses_values_that_would_break_the_file(self):
         for value in ("it's", "two\nlines"):
             with self.assertRaises(ValueError):
-                lx.write_env(lx.L.env / "x.env", {"KEY": value}, "test")
+                state_store.write_env(layout.L.env / "x.env", {"KEY": value}, "test")
 
 
 class Deploying(Base):
@@ -233,15 +237,15 @@ class Deploying(Base):
             self.assertIn(image(name, "1"), self.dotenv())
             self.assertIn(["docker", "pull", "--quiet", image(name, "1")], self.server.calls)
         self.assertFalse(
-            self.server.ran("docker", "compose", "--project-directory", str(lx.L.etc), "run"),
+            self.server.ran("docker", "compose", "--project-directory", str(layout.L.etc), "run"),
             "nothing to back up before the first deployment",
         )
         for name in ("rat-webs", "nobody"):
-            link = lx.L.www / name
+            link = layout.L.www / name
             self.assertEqual(Path(os.readlink(link)).name, f"{name}-{'1' * 12}")
             self.assertEqual(((link / "index.html").stat().st_mode & 0o777), 0o644)
-        self.assertTrue((lx.L.www / "home" / "index.html").is_file())
-        state = lx.load_state()
+        self.assertTrue((layout.L.www / "home" / "index.html").is_file())
+        state = state_store.load_state()
         self.assertEqual(state["current"]["images"]["nobody"], image("nobody", "1"))
         self.assertEqual(self.reports[-1][1], "success")
 
@@ -259,15 +263,15 @@ class Deploying(Base):
         self.run_quietly()
         self.publish(release("3"), "c" * 40)
         self.assertEqual(self.run_quietly(), 0)
-        runs = self.server.ran("docker", "compose", "--project-directory", str(lx.L.etc), "run")
+        runs = self.server.ran("docker", "compose", "--project-directory", str(layout.L.etc), "run")
         self.assertTrue(any("service.cli" in call and "backup" in call for call in runs))
         self.assertTrue(any("/app/backup.mjs" in call for call in runs))
         last_backup = max(i for i, c in enumerate(self.server.calls) if c in runs)
         last_up = max(i for i, c in enumerate(self.server.calls) if "up" in c and "compose" in c)
         self.assertLess(last_backup, last_up, "backups run before the new versions start")
-        state = lx.load_state()
+        state = state_store.load_state()
         self.assertEqual(state["previous"]["images"]["rat-webs"], image("rat-webs", "2"))
-        kept = sorted(p.name for p in (lx.L.www / ".releases").iterdir() if p.name.startswith("rat-webs"))
+        kept = sorted(p.name for p in (layout.L.www / ".releases").iterdir() if p.name.startswith("rat-webs"))
         self.assertEqual(kept, [f"rat-webs-{'2' * 12}", f"rat-webs-{'3' * 12}"])
 
     def test_failed_checks_put_the_previous_versions_back(self):
@@ -278,8 +282,8 @@ class Deploying(Base):
         self.assertEqual(self.run_quietly(), 1)
         self.assertIn(image("rat-webs", "1"), self.dotenv())
         self.assertNotIn(image("rat-webs", "2"), self.dotenv())
-        self.assertEqual(Path(os.readlink(lx.L.www / "rat-webs")).name, f"rat-webs-{'1' * 12}")
-        self.assertEqual(lx.load_state()["current"]["images"]["rat-webs"], image("rat-webs", "1"))
+        self.assertEqual(Path(os.readlink(layout.L.www / "rat-webs")).name, f"rat-webs-{'1' * 12}")
+        self.assertEqual(state_store.load_state()["current"]["images"]["rat-webs"], image("rat-webs", "1"))
         self.assertEqual(self.checks, ["basic", "basic", "basic"])
         self.assertEqual(self.reports[-1][1], "failure")
         self.assertIn("previous versions are running again", self.reports[-1][2])
@@ -296,7 +300,7 @@ class Deploying(Base):
         self.publish({**release("1"), "script": "curl evil | sh"})
         self.assertEqual(self.run_quietly(), 1)
         self.assertEqual([c for c in self.server.calls if c[0] != "git"], [])
-        self.assertFalse((lx.L.etc / ".env").exists())
+        self.assertFalse((layout.L.etc / ".env").exists())
         self.assertEqual(self.reports[-1][1], "failure")
 
     def test_failed_download_changes_nothing(self):
@@ -306,14 +310,14 @@ class Deploying(Base):
         self.server.fail = [["docker", "pull", "--quiet", image("nobody", "2")]]
         self.assertEqual(self.run_quietly(), 1)
         self.assertIn(image("rat-webs", "1"), self.dotenv())
-        self.assertEqual(lx.load_state()["current"]["images"]["rat-webs"], image("rat-webs", "1"))
+        self.assertEqual(state_store.load_state()["current"]["images"]["rat-webs"], image("rat-webs", "1"))
 
     def test_links_in_static_files_are_refused(self):
         self.server.www_link = True
         self.publish(release("1"))
         self.assertEqual(self.run_quietly(), 1)
-        self.assertFalse((lx.L.etc / ".env").exists())
-        self.assertFalse((lx.L.www / "rat-webs").exists())
+        self.assertFalse((layout.L.etc / ".env").exists())
+        self.assertFalse((layout.L.www / "rat-webs").exists())
         self.assertIn("link", " ".join(self.reports[-1][3]))
 
     def test_new_run_label_checks_again_without_downloads(self):
@@ -335,11 +339,11 @@ class Deploying(Base):
         self.assertEqual(self.reports[-1][2], "No version changed")
 
     def test_home_refuses_file_types_it_does_not_serve(self):
-        (lx.L.repo / "home" / "run.sh").write_text("echo")
+        (layout.L.repo / "home" / "run.sh").write_text("echo")
         self.publish(release("1"))
         self.assertEqual(self.run_quietly(), 1)
         self.assertEqual(self.reports[-1][2], "Not deployed: home/ was refused; nothing was changed")
-        self.assertFalse((lx.L.www / "home").exists())
+        self.assertFalse((layout.L.www / "home").exists())
         self.assertFalse(self.server.ran("docker"))
 
 
@@ -358,46 +362,71 @@ class ApplyConfig(Base):
             "server/systemd/lx-deploy.timer",
             "server/systemd/lx-deploy.service",
         ):
-            target = lx.L.repo / source
+            target = layout.L.repo / source
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(f"new {source}\n")
 
     def apply(self):
         with contextlib.redirect_stdout(io.StringIO()) as out:
-            code = lx.cmd_apply_config(self.server, yes=True)
+            code = configuration.cmd_apply_config(self.server, yes=True)
         return code, out.getvalue()
 
     def test_installs_validates_and_reloads(self):
         code, _ = self.apply()
         self.assertEqual(code, 0)
-        self.assertEqual((lx.L.etc / "caddy" / "sites.caddy").read_text(), "new caddy/sites.caddy\n")
-        self.assertEqual(lx.L.caddyfile.read_text(), lx.MAIN_CADDYFILE)
-        self.assertEqual((lx.L.etc / "watch.json").stat().st_mode & 0o777, 0o600)
+        self.assertEqual((layout.L.etc / "caddy" / "sites.caddy").read_text(), "new caddy/sites.caddy\n")
+        self.assertEqual(layout.L.caddyfile.read_text(), layout.MAIN_CADDYFILE)
+        self.assertEqual((layout.L.etc / "watch.json").stat().st_mode & 0o777, 0o600)
         self.assertTrue(self.server.ran("caddy", "validate"))
         self.assertIn(["systemctl", "reload-or-restart", "caddy"], self.server.calls)
         self.assertIn(["systemctl", "enable", "--now", "lx-deploy.timer"], self.server.calls)
-        self.assertEqual(lx.config_drift(), [])
+        self.assertEqual(configuration.config_drift(), [])
         self.assertEqual(
             self.apply(), (0, "The server already has every file in the repository. Nothing to do.\n")
         )
 
     def test_invalid_caddy_file_restores_the_old_files(self):
         self.apply()
-        (lx.L.repo / "caddy" / "sites.caddy").write_text("broken {\n")
-        (lx.L.repo / "server" / "systemd" / "lx-new.timer").write_text("[Timer]\n")
+        (layout.L.repo / "caddy" / "sites.caddy").write_text("broken {\n")
+        (layout.L.repo / "server" / "systemd" / "lx-new.timer").write_text("[Timer]\n")
         self.server.fail = [["caddy", "validate"]]
         self.server.calls = []
         code, out = self.apply()
         self.assertEqual(code, 1)
         self.assertIn("previous files are back", out)
-        self.assertEqual((lx.L.etc / "caddy" / "sites.caddy").read_text(), "new caddy/sites.caddy\n")
-        self.assertFalse((lx.L.systemd / "lx-new.timer").exists())
+        self.assertEqual((layout.L.etc / "caddy" / "sites.caddy").read_text(), "new caddy/sites.caddy\n")
+        self.assertFalse((layout.L.systemd / "lx-new.timer").exists())
         self.assertFalse(self.server.ran("systemctl", "reload-or-restart"), "Caddy keeps its old files")
 
     def test_asks_before_changing_anything(self):
         with mock.patch("builtins.input", return_value="no"), contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(lx.cmd_apply_config(self.server), 1)
-        self.assertFalse((lx.L.etc / "compose.yaml").exists())
+            self.assertEqual(configuration.cmd_apply_config(self.server), 1)
+        self.assertFalse((layout.L.etc / "compose.yaml").exists())
+
+
+    def test_installed_launcher_imports_its_package_and_failed_update_restores_it(self):
+        # Install real Python files into the fake checkout, then run only --help in isolation.
+        # All deployment/Caddy/systemd actions still go through FakeServer.
+        for source, _, _ in configuration.config_files():
+            if source == "server/lx-deploy" or source.startswith("server/lxdeploy/"):
+                target = layout.L.repo / source
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes((ROOT / source).read_bytes())
+        code, _ = self.apply()
+        self.assertEqual(code, 0)
+        result = subprocess.run(
+            [sys.executable, str(layout.L.program), "--help"], cwd=self.tmp,
+            env={**os.environ, "PYTHONPATH": ""}, text=True, capture_output=True, check=True,
+        )
+        self.assertIn("apply-config", result.stdout)
+        installed = layout.L.program.parent / "lxdeploy" / "checks.py"
+        original = installed.read_bytes()
+        source = layout.L.repo / "server" / "lxdeploy" / "checks.py"
+        source.write_text(source.read_text() + "\n# Pending package update\n")
+        self.server.fail = [["caddy", "validate"]]
+        code, _ = self.apply()
+        self.assertEqual(code, 1)
+        self.assertEqual(installed.read_bytes(), original)
 
 
 class Checking(unittest.TestCase):
@@ -405,13 +434,13 @@ class Checking(unittest.TestCase):
         self.server = FakeServer()
 
     def run_basic(self):
-        checks = lx.Checks(self.server)
+        checks = health_checks.Checks(self.server)
         checks.basic()
         return checks
 
     def test_a_healthy_server_passes(self):
         checks = self.run_basic()
-        self.assertTrue(checks.passed, lx.check_lines(checks))
+        self.assertTrue(checks.passed, reporting.check_lines(checks))
         self.assertGreaterEqual(len(checks.lines), 14)
 
     def failing(self, key, answer):
@@ -447,9 +476,9 @@ class Checking(unittest.TestCase):
         self.assertEqual(len(failed), 1)
 
     def test_full_checks_that_break_count_as_failed(self):
-        self.server.fail = [["docker", "compose", "--project-directory", str(lx.L.etc), "stop"]]
-        with mock.patch.object(lx.Checks, "live_counts", return_value={}):
-            checks = lx.run_checks(self.server, "full")
+        self.server.fail = [["docker", "compose", "--project-directory", str(layout.L.etc), "stop"]]
+        with mock.patch.object(health_checks.Checks, "live_counts", return_value={}):
+            checks = health_checks.run_checks(self.server, "full")
         self.assertFalse(checks.passed)
         self.assertEqual(checks.lines[-1], (False, "the checks stopped early (CommandFailed)"))
 
@@ -488,14 +517,14 @@ class Secrets(Base):
                     return value
             raise AssertionError(prompt)
 
-        return mock.patch.object(lx, "ask", side_effect=answer)
+        return mock.patch.object(provisioning, "ask", side_effect=answer)
 
     def test_creates_matching_secrets_and_never_prints_them(self):
         self.publish(release("1"))
         with self.answers(), contextlib.redirect_stdout(io.StringIO()) as out:
-            lx.cmd_init_secrets(self.server)
+            provisioning.cmd_init_secrets(self.server)
         env = {
-            name: lx.read_env(lx.L.env / f"{name}.env") for name in ("shared-account", "rat-webs", "nobody")
+            name: state_store.read_env(layout.L.env / f"{name}.env") for name in ("shared-account", "rat-webs", "nobody")
         }
         internal = {values["ACCOUNT_INTERNAL_SECRET"] for values in env.values()}
         self.assertEqual(len(internal), 1)
@@ -503,11 +532,11 @@ class Secrets(Base):
         self.assertEqual(env["rat-webs"]["NOBODY_INTERNAL_SECRET"], env["nobody"]["NOBODY_INTERNAL_SECRET"])
         self.assertNotEqual(env["rat-webs"]["ACCOUNT_CLIENT_SECRET"], env["nobody"]["ACCOUNT_CLIENT_SECRET"])
         self.assertRegex(env["rat-webs"]["RATWEBS_ADMIN_PASSWORD_HASH"], r"^\$2b\$12\$")
-        clients = json.loads((lx.L.srv / "shared-account" / "clients.json").read_text())
+        clients = json.loads((layout.L.srv / "shared-account" / "clients.json").read_text())
         self.assertEqual(clients["library"]["secret"], env["rat-webs"]["ACCOUNT_CLIENT_SECRET"])
         self.assertEqual(clients["forum"]["redirect_uri"], "https://forum.lixingzhuyi.com/api/auth/callback")
         self.assertEqual(clients["forum"]["logout_uri"], "http://127.0.0.1:8000/internal/oidc/logout")
-        names = (lx.L.srv / "shared-account" / "reserved-names.txt").read_text()
+        names = (layout.L.srv / "shared-account" / "reserved-names.txt").read_text()
         self.assertIn("鼠鼠", names)
         self.assertIn("小红", names)
         password_call = [c for c in self.server.calls if c[:2] == ["docker", "run"] and "python" in c][0]
@@ -517,20 +546,20 @@ class Secrets(Base):
             for key, value in values.items():
                 if value and len(value) > 8:
                     self.assertNotIn(value, printed, key)
-        for path in lx.L.env.iterdir():
+        for path in layout.L.env.iterdir():
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
     def test_running_again_keeps_every_value(self):
         self.publish(release("1"))
         with self.answers(), contextlib.redirect_stdout(io.StringIO()):
-            lx.cmd_init_secrets(self.server)
-        first = (lx.L.env / "shared-account.env").read_text()
+            provisioning.cmd_init_secrets(self.server)
+        first = (layout.L.env / "shared-account.env").read_text()
         with (
-            mock.patch.object(lx, "ask", side_effect=AssertionError("asked again")),
+            mock.patch.object(provisioning, "ask", side_effect=AssertionError("asked again")),
             contextlib.redirect_stdout(io.StringIO()),
         ):
-            lx.cmd_init_secrets(self.server)
-        self.assertEqual((lx.L.env / "shared-account.env").read_text(), first)
+            provisioning.cmd_init_secrets(self.server)
+        self.assertEqual((layout.L.env / "shared-account.env").read_text(), first)
 
 
 class TheFilesAgree(unittest.TestCase):
@@ -540,8 +569,8 @@ class TheFilesAgree(unittest.TestCase):
         sites = (ROOT / "caddy" / "sites.caddy").read_text()
         addresses = re.findall(r"^([a-z0-9.,\s-]+?) \{$", sites, re.M)
         hosts = {host.strip() for line in addresses for host in line.split(",")}
-        self.assertTrue(set(lx.PUBLIC_HOSTS) <= hosts, hosts)
-        for facts in lx.SERVICES.values():
+        self.assertTrue(set(layout.PUBLIC_HOSTS) <= hosts, hosts)
+        for facts in layout.SERVICES.values():
             self.assertIn(
                 f"127.0.0.1:{facts['port']}", sites + (ROOT / "caddy" / "account.caddy").read_text()
             )
@@ -549,8 +578,8 @@ class TheFilesAgree(unittest.TestCase):
     def test_compose_names_the_services_and_ports(self):
         compose = (ROOT / "server" / "compose.yaml").read_text()
         services = re.findall(r"^  ([a-z-]+):$", compose.split("\nservices:\n")[1], re.M)
-        self.assertEqual(services, list(lx.SERVICES) + list(lx.JOBS))
-        for name, facts in lx.SERVICES.items():
+        self.assertEqual(services, list(layout.SERVICES) + list(layout.JOBS))
+        for name, facts in layout.SERVICES.items():
             self.assertIn(f'PORT: "{facts["port"]}"', compose)
             self.assertIn(f"LX_IMAGE_{name.upper().replace('-', '_')}", compose)
             self.assertIn(f'"/srv/lx/{name}:/data"', compose)
@@ -558,18 +587,18 @@ class TheFilesAgree(unittest.TestCase):
     def test_monitoring_watches_the_deployed_names(self):
         watch = json.loads((ROOT / "server" / "watch.json").read_text())
         names = [service["name"] for service in watch["services"]]
-        self.assertEqual(names, list(lx.SERVICES) + list(lx.JOBS))
+        self.assertEqual(names, list(layout.SERVICES) + list(layout.JOBS))
         for service in watch["services"]:
-            if service["name"] in lx.SERVICES:
-                self.assertEqual(service["host"], lx.SERVICES[service["name"]]["host"])
+            if service["name"] in layout.SERVICES:
+                self.assertEqual(service["host"], layout.SERVICES[service["name"]]["host"])
 
     def test_timers_exist(self):
-        for timer in lx.TIMERS:
+        for timer in layout.TIMERS:
             self.assertTrue((ROOT / "server" / "systemd" / timer).is_file(), timer)
             self.assertTrue((ROOT / "server" / "systemd" / timer.replace(".timer", ".service")).is_file())
 
     def test_release_in_the_repository_is_valid(self):
-        result, errors = lx.validate_release((ROOT / "release.json").read_text())
+        result, errors = release_rules.validate_release((ROOT / "release.json").read_text())
         self.assertEqual(errors, [])
 
 
@@ -577,7 +606,7 @@ class Reporting(unittest.TestCase):
     def test_reports_carry_no_settings(self):
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(tmp)]))
-        lx.L = lx.Layout(etc=tmp, state=tmp, srv=tmp, systemd=tmp, program=tmp, monitor=tmp, caddyfile=tmp)
+        layout.L = layout.Layout(etc=tmp, state=tmp, srv=tmp, systemd=tmp, program=tmp, monitor=tmp, caddyfile=tmp)
         (tmp / "report.token").write_text("token-value\n")
         (tmp / "deploy.json").write_text(json.dumps({"report_issue": 1}))
         sent = []
@@ -587,14 +616,14 @@ class Reporting(unittest.TestCase):
             return io.BytesIO(b"{}")
 
         with (
-            mock.patch.object(lx.urllib.request, "urlopen", side_effect=urlopen),
+            mock.patch.object(reporting.urllib.request, "urlopen", side_effect=urlopen),
             contextlib.redirect_stdout(io.StringIO()),
         ):
-            lx.report(
+            reporting.report(
                 COMMIT,
                 "success",
                 "Deployed and checked (basic)",
-                lx.version_lines({"nobody": image("nobody", "1")}, ["nobody"]),
+                reporting.version_lines({"nobody": image("nobody", "1")}, ["nobody"]),
             )
         self.assertEqual(
             [url for url, _, _ in sent],
