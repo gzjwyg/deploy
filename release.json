@@ -1,10 +1,10 @@
 {
   "images": {
-    "shared-account": "ghcr.io/gzjwyg/shared-account@sha256:4fa2d3b963f0245c3f2ed42c360a03912098a66112c9d6d53c4877d6f31c56f1",
-    "rat-webs": "ghcr.io/gzjwyg/rat-webs@sha256:fdac4b8e4cdbe6dc8cc27cb9ef09337f12680b577239d2a28275ea385c44cc98",
-    "nobody": "ghcr.io/gzjwyg/nobody@sha256:faf98c676be2ebbe263ab6ff612ddfb6dcc84ac81512d08ba3a4f6a9de7f3e7d",
-    "articledb": "ghcr.io/gzjwyg/articledb@sha256:f019ea28629b22bed4a7e6f131fccf7f7829f954ffef8c2cb3aac4de31d0203e"
+    "shared-account": "ghcr.io/gzjwyg/shared-account@sha256:23dddfc24e5d699e46b982d3c1ee1d44a27648ac702721302a26ddf2df014a14",
+    "rat-webs": "ghcr.io/gzjwyg/rat-webs@sha256:e31d821ae3d0134f402478d1fe1bb2df1100833cf6f720d083fdb4e2d68ae323",
+    "nobody": "ghcr.io/gzjwyg/nobody@sha256:ea829f6ba5154d396df8a897cefa3680547ff3764f7db9dfa00dd84e1c41ad53",
+    "articledb": "ghcr.io/gzjwyg/articledb@sha256:fd9203e5a368c2565b6a1a1598ddaa2f06bfd3f3ab4412d0f30f51d52f9da0eb"
   },
   "checks": "basic",
-  "run": "first deployment: sign-in version 2 renewed, library. and forum. built in (5 Nov)"
+  "run": "first deployment: the modular code reviewed 15 Nov (paths v2, P3 article library)"
 }
