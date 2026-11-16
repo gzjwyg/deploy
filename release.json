@@ -1,10 +1,10 @@
 {
   "images": {
     "shared-account": "ghcr.io/gzjwyg/shared-account@sha256:23dddfc24e5d699e46b982d3c1ee1d44a27648ac702721302a26ddf2df014a14",
-    "rat-webs": "ghcr.io/gzjwyg/rat-webs@sha256:e31d821ae3d0134f402478d1fe1bb2df1100833cf6f720d083fdb4e2d68ae323",
+    "rat-webs": "ghcr.io/gzjwyg/rat-webs@sha256:5b87f431d1b151df86232da9b50a9a64ed408b93f941dab051059e3731f04667",
     "nobody": "ghcr.io/gzjwyg/nobody@sha256:ea829f6ba5154d396df8a897cefa3680547ff3764f7db9dfa00dd84e1c41ad53",
     "articledb": "ghcr.io/gzjwyg/articledb@sha256:fd9203e5a368c2565b6a1a1598ddaa2f06bfd3f3ab4412d0f30f51d52f9da0eb"
   },
   "checks": "basic",
-  "run": "first deployment: the modular code reviewed 15 Nov (paths v2, P3 article library)"
+  "run": "first deployment: reviewed modular code (15 Nov) and the Library's interface pass (16 Nov)"
 }
