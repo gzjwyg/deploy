@@ -179,7 +179,7 @@ def credit_metrics(path, now):
         row = db.execute("SELECT value FROM ops_state WHERE key='credit_worker'").fetchone()
         heartbeat = json.loads(row[0]) if row else None
         oldest = db.execute(
-            "SELECT min(created_at) FROM community_credits WHERE sent=0"
+            "SELECT min(created_at) FROM community_credits WHERE sent=0 AND failed_status IS NULL"
         ).fetchone()[0]
     return {
         "running": bool(

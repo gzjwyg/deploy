@@ -10,7 +10,7 @@ the shared account service, and the Concept Map's and Article-database's jobs. M
 | `server/lx-deploy` | The updater (Python, standard library): `run` twice a day (04:00 and 16:00 Hong Kong time), `apply-config`, `init-secrets`, `check`, `backup`, `rollback`, `status` | Ready; tested with a fake server |
 | `server/compose.yaml` | How the three services and the article-library job run: host network on 127.0.0.1, user 10001, read-only root, no capabilities, their own data folder | Ready |
 | `server/systemd/` | Timers: deployments (twice a day), backups (daily), alerts (15 min) and the monthly restore test | Ready |
-| `server/watch.json`, `server/monitor/watch.py` | Package H's alerts with this deployment's names; `watch.py` is a copy of shared-account `deploy/watch.py` (67f3c60): change it there first | Ready |
+| `server/watch.json`, `server/monitor/watch.py` | Package H's alerts with this deployment's names; `watch.py` is a copy of shared-account `deploy/watch.py` (d2245e6): change it there first | Ready |
 | `server/inspect.sh`, `server/install.sh` | The read-only server check, and the installer | Ready |
 | `caddy/` | The web server: `Caddyfile` → `sites.caddy` (one block per name), `common.caddy` (probes, `/internal/`, headers, a log without addresses), `account.caddy` (only the public sign-in paths) | Ready |
 | `home/` | The homepage at `lixingzhuyi.com` | Ready |
